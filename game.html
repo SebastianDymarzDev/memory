@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory - Game</title>
+
+    <link rel="icon" type="image/png" href="/assets/img/icons/stadia_controller.png">
+</head>
+
+<body>
+    <header class="game__bar">
+        <div class="game__score">
+            <span class="game__player game__player--blue">
+                <img src="/assets/img/code_vibes/player_code_blue.png" alt="">Blue <span id="score-blue">0</span>
+            </span>
+            <span class="game__player game__player--orange">
+                <img src="/assets/img/code_vibes/player_code_orange.png" alt="">Orange <span id="score-orange">0</span>
+            </span>
+        </div>
+
+        <p class="game__turn">
+            <span id="turn-text">Current player:</span>
+            <img id="turn-icon" src="/assets/img/code_vibes/player_code_blue.png" alt="">
+        </p>
+
+        <button class="game__exit" id="exit-btn" type="button">
+            <span class="game__exit-icon"></span>Exit game
+        </button>
+    </header>
+
+    <main class="game__board" id="board"></main>
+
+    <dialog class="dialog" id="quit-dialog">
+        <p class="dialog__text">Are you sure you want to quit the game?</p>
+        <div class="dialog__actions">
+            <button class="dialog__btn dialog__btn--primary" id="quit-no" type="button">Back to game</button>
+            <a class="dialog__btn dialog__btn--secondary" href="./settings.html">Exit game</a>
+        </div>
+    </dialog>
+
+    <script type="module" src="./src/game.ts"></script>

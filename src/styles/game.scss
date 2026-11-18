@@ -1,0 +1,196 @@
+@use 'style' as *;
+
+body {
+    // Kartengröße = Originalgröße der Bilder (Code vibes: 120x120)
+    --card-w: 120px;
+    --card-h: 120px;
+}
+
+.game {
+    &__bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 32px 104px 0;
+        font-size: 22px;
+    }
+
+    &__score {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        height: 61px;
+        padding: 0 20px;
+        background: #415652;
+        font-family: 'Red Rose', sans-serif;
+        font-weight: 700;
+    }
+
+    &__player {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        &--blue {
+            color: #2bb1ff;
+        }
+
+        &--orange {
+            color: #f58e39;
+        }
+    }
+
+    &__turn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-weight: 500;
+    }
+
+    &__exit {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 212px;
+        height: 61px;
+        border: 1px solid #42665f;
+        background: #415652;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &:hover {
+            border: 3px solid #4dd5bc;
+            box-shadow: 4px 4px 4px rgba($yellow, 0.3);
+        }
+    }
+
+    // Icon in Textfarbe (move_item.png ist nur die Form)
+    &__exit-icon {
+        width: 30px;
+        height: 30px;
+        background: currentColor;
+        -webkit-mask: url('/memory/assets/img/icons/move_item.png') center / contain no-repeat;
+        mask: url('/memory/assets/img/icons/move_item.png') center / contain no-repeat;
+    }
+
+    &__board {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 4), var(--card-w));
+        gap: 16px;
+        justify-content: center;
+        margin-top: 55px;
+    }
+}
+
+// Karte mit Flip-Animation
+.card {
+    width: var(--card-w);
+    height: var(--card-h);
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+
+    &:disabled {
+        cursor: default;
+    }
+
+    &__inner {
+        position: relative;
+        display: block;
+        width: 100%;
+        height: 100%;
+        transform: perspective(600px) rotateY(0deg);
+        transform-style: preserve-3d;
+        transition: transform 0.4s ease;
+    }
+
+    &.is-flipped &__inner {
+        transform: perspective(600px) rotateY(180deg);
+    }
+
+    &__face,
+    &__back {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+    }
+
+    &__face {
+        transform: rotateY(180deg);
+    }
+}
+
+// Dialog "Spiel beenden"
+.dialog {
+    padding: 48px 56px;
+    border: 0;
+    background: #fff;
+    color: $bg;
+    text-align: center;
+    font-family: 'Red Rose', sans-serif;
+
+    &::backdrop {
+        background: rgba(0, 0, 0, 0.6);
+    }
+
+    &__text {
+        max-width: 420px;
+        margin: 0 auto 40px;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: center;
+        gap: 24px;
+    }
+
+    &__btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 55px;
+        padding: 0 32px;
+        border: 1px solid #66cfbc;
+        font: inherit;
+        font-size: 20px;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &--primary {
+            background: #66cfbc;
+            color: #fff;
+
+            &:hover {
+                background: #94ded2;
+                border-color: #3abca4;
+                box-shadow: inset 0 0 0 2px #3abca4;
+            }
+        }
+
+        &--secondary {
+            background: #eefcf9;
+            border-color: #4dd5bc;
+            color: #4dd5bc;
+
+            &:hover {
+                background: #e0faf5;
+                box-shadow: inset 0 0 0 2px #4dd5bc, 4px 4px 8px rgba(77, 213, 188, 0.5);
+            }
+        }
+    }
+}

@@ -1,0 +1,94 @@
+@use 'style' as *;
+
+.start::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 363px;
+    height: 410px;
+    background: url('/memory/assets/img/icons/stadia_controller_big.png') no-repeat left bottom / contain;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.start {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    width: fit-content;
+    margin: 0 auto;
+
+    &__sub {
+        margin: 0 0 8px;
+        font-size: clamp(24px, 3.333vw, 48px);
+    }
+
+    &__title {
+        margin: 0 0 48px;
+        font-family: 'Red Rose', sans-serif;
+        font-weight: 700;
+        font-size: clamp(56px, 9.722vw, 140px);
+        line-height: 1.1;
+    }
+
+    &__btn {
+        align-self: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        width: 250px;
+        height: 100px;
+        padding: 0;
+        border: 0;
+        background: $yellow;
+        color: $bg;
+        font-family: 'Figtree', sans-serif;
+        font-weight: 800;
+        font-size: 32px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+
+        &:hover {
+            transform: scale(1.1);
+
+            .start__icon {
+                transform: rotate(-15deg);
+            }
+
+            .start__arrow-default {
+                opacity: 0;
+            }
+
+            .start__arrow-hover {
+                opacity: 1;
+            }
+        }
+    }
+
+    &__icon {
+        width: 44px;
+        height: auto;
+        transition: transform 0.2s ease;
+    }
+
+    &__arrow {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 30px;
+
+        img {
+            grid-area: 1 / 1;
+            transition: opacity 0.2s ease;
+        }
+
+        &-hover {
+            opacity: 0;
+        }
+    }
+}
