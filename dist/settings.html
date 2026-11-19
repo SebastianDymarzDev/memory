@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory - Settings</title>
+
+    <link rel="icon" type="image/png" href="/memory/assets/img/icons/stadia_controller.png">
+  <script type="module" crossorigin src="/memory/assets/settings-Bc6wr-a_.js"></script>
+  <link rel="modulepreload" crossorigin href="/memory/assets/rolldown-runtime-B8xr6ykz.js">
+  <link rel="modulepreload" crossorigin href="/memory/assets/modulepreload-polyfill-P2Xu9kJm.js">
+  <link rel="modulepreload" crossorigin href="/memory/assets/storage-vm72tIAQ.js">
+  <link rel="stylesheet" crossorigin href="/memory/assets/settings-BfzjTqKY.css">
+</head>
+
+<body>
+    <section class="settings">
+        <h2 class="settings__title">Settings</h2>
+
+        <div class="settings__inner">
+            <div class="settings__options">
+                <div class="settings__group" role="radiogroup" aria-labelledby="g-theme">
+                    <h3 class="settings__heading" id="g-theme">
+                        <img src="/memory/assets/img/icons/palette.png" alt="">Game themes
+                    </h3>
+                    <label class="settings__option"><input type="radio" name="theme" value="code" checked><span>Code
+                            vibes theme</span></label>
+                    <label class="settings__option"><input type="radio" name="theme" value="games"><span>Gaming
+                            theme</span></label>
+                    <label class="settings__option"><input type="radio" name="theme" value="projects"><span>DA Projects
+                            theme</span></label>
+                    <label class="settings__option"><input type="radio" name="theme" value="food"><span>Foods
+                            theme</span></label>
+                </div>
+
+                <div class="settings__group" role="radiogroup" aria-labelledby="g-player">
+                    <h3 class="settings__heading" id="g-player">
+                        <img src="/memory/assets/img/icons/chess_pawn_mint.png" alt="">Choose player
+                    </h3>
+                    <label class="settings__option"><input type="radio" name="player"
+                            value="blue"><span>Blue</span></label>
+                    <label class="settings__option"><input type="radio" name="player"
+                            value="orange"><span>Orange</span></label>
+                </div>
+
+                <div class="settings__group" role="radiogroup" aria-labelledby="g-size">
+                    <h3 class="settings__heading" id="g-size">
+                        <img src="/memory/assets/img/icons/board_size.png" alt="">Board size
+                    </h3>
+                    <label class="settings__option"><input type="radio" name="size" value="16"><span>16
+                            cards</span></label>
+                    <label class="settings__option"><input type="radio" name="size" value="24"><span>24
+                            cards</span></label>
+                    <label class="settings__option"><input type="radio" name="size" value="36"><span>36
+                            cards</span></label>
+                </div>
+            </div>
+
+            <div class="settings__side">
+                <img class="settings__preview" id="preview" src="/memory/assets/img/code_vibes/code_example.png" alt="Preview">
+
+                <div class="settings__bar">
+                    <span data-step="theme">Game theme</span>
+                    <img class="settings__sep" src="/memory/assets/img/icons/Line 6.png" alt="">
+                    <span data-step="player">Player</span>
+                    <img class="settings__sep" src="/memory/assets/img/icons/Line 6.png" alt="">
+                    <span data-step="size">Board size</span>
+                    <button class="settings__start" id="start-btn" type="button" disabled>
+                        <img src="/memory/assets/img/icons/smart_display.png" alt=""><span>Start</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</body>
+
+</html>

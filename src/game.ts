@@ -1,26 +1,37 @@
 import './styles/game.scss'
 import { loadSettings, saveResult } from './storage'
 
+/** Base URL of the app (Vite `base`). */
 const BASE = import.meta.env.BASE_URL
 
+/** Colour of a player. */
 type PlayerColor = 'blue' | 'orange'
 
+/** Settings after validation: every value is present and the theme exists. */
 interface ValidSettings {
   theme: string
   player: string
   size: number
 }
 
+/** A single card on the board. */
 interface Card {
+  /** Position in the shuffled deck. */
   index: number
+  /** Cards with the same pairId belong together. */
   pairId: number
   button: HTMLButtonElement
   matched: boolean
 }
 
+/**
+ * Builds the file names `<prefix>1.png` to `<prefix>18.png`.
+ * @param prefix - File name prefix, e.g. "games".
+ */
 const numbered = (prefix: string): string[] =>
   Array.from({ length: 18 }, (_, position) => `${prefix}${position + 1}.png`)
 
+/** Image folder, card back and card faces per theme. */
 const themes: Record<string, { folder: string; back: string; faces: string[] }> = {
   code: {
     folder: 'code_vibes',
@@ -36,9 +47,13 @@ const themes: Record<string, { folder: string; back: string; faces: string[] }> 
   food: { folder: 'food', back: 'food-back.png', faces: numbered('food') },
 }
 
+/** Time in ms until two opened cards are resolved. */
 const FLIP_BACK_DELAY = 900
+/** Time in ms the computer waits before each of its moves. */
 const COMPUTER_DELAY = 800
+/** Probability (0 to 1) that the computer remembers a revealed card. */
 const MEMORY_CHANCE = 0.7
+/** Time in ms between the last pair and the redirect to the result page. */
 const FINISH_DELAY = 1200
 
 const board = document.querySelector<HTMLElement>('#board')!
@@ -51,35 +66,61 @@ const quitDialog = document.querySelector<HTMLDialogElement>('#quit-dialog')!
 const keepPlayingButton = document.querySelector<HTMLElement>('#quit-no')!
 const leaveGameButton = document.querySelector<HTMLElement>('#quit-yes')!
 
+/** All cards of the current game. */
 let cards: Card[] = []
+/** Cards currently turned over in this turn (0 to 2). */
 let openCards: Card[] = []
 let humanPlayer: PlayerColor = 'blue'
 let computerPlayer: PlayerColor = 'orange'
 let currentPlayer: PlayerColor = 'blue'
 const scores: Record<PlayerColor, number> = { blue: 0, orange: 0 }
+/** Indexes of cards the computer has seen and remembers. */
 const seenCardIndexes = new Set<number>()
-const pendingActions: Array<() => void> = [] // Aktionen, die auf das Schließen des Dialogs warten
+/** Actions that wait until the quit dialog is closed. */
+const pendingActions: Array<() => void> = []
 let themeKey = 'code'
 
-// Während der Exit-Dialog offen ist, werden alle Timer angehalten und danach nachgeholt
+/**
+ * Runs an action after a delay. While the quit dialog is open, the action
+ * is queued and runs once the dialog closes, so the game is effectively paused.
+ * @param action - The function to run.
+ * @param delayMs - Delay in milliseconds.
+ */
 function later(action: () => void, delayMs: number): void {
   window.setTimeout(() => (quitDialog.open ? pendingActions.push(action) : action()), delayMs)
 }
 
+/**
+ * Builds the icon path of a player for the current theme.
+ * @param color - Player colour.
+ */
 function playerIcon(color: PlayerColor): string {
   return themeKey === 'code'
     ? `${BASE}assets/img/code_vibes/player_code_${color}.png`
     : `${BASE}assets/img/icons/chess_pawn_${color}.png`
 }
 
+/**
+ * Returns the other player.
+ * @param color - Player colour.
+ */
 function opponentOf(color: PlayerColor): PlayerColor {
   return color === 'blue' ? 'orange' : 'blue'
 }
 
+/**
+ * Picks a random element.
+ * @param items - Non-empty list.
+ */
 function randomItem<Item>(items: Item[]): Item {
   return items[Math.floor(Math.random() * items.length)]
 }
 
+/**
+ * Shuffles a list (Fisher-Yates) without changing the original.
+ * @param items - The list to shuffle.
+ * @returns A new, shuffled list.
+ */
 function shuffle<Item>(items: Item[]): Item[] {
   const shuffled = [...items]
   for (let position = shuffled.length - 1; position > 0; position--) {
@@ -89,6 +130,10 @@ function shuffle<Item>(items: Item[]): Item[] {
   return shuffled
 }
 
+/**
+ * Builds the inner HTML of a card (face and back image).
+ * @param face - File name of the face image.
+ */
 function cardMarkup(face: string): string {
   const theme = themes[themeKey]
   const imageFolder = `${BASE}assets/img/${theme.folder}/`
@@ -100,6 +145,12 @@ function cardMarkup(face: string): string {
   )
 }
 
+/**
+ * Creates a card with its button and click handler.
+ * @param face - File name of the face image.
+ * @param pairId - Identifier shared by both cards of a pair.
+ * @param index - Position in the deck.
+ */
 function createCard(face: string, pairId: number, index: number): Card {
   const button = document.createElement('button')
   button.type = 'button'
@@ -111,6 +162,10 @@ function createCard(face: string, pairId: number, index: number): Card {
   return card
 }
 
+/**
+ * Creates the shuffled deck and adds it to the board.
+ * @param size - Number of cards (16, 24 or 36).
+ */
 function buildBoard(size: number): void {
   const faces = shuffle(themes[themeKey].faces).slice(0, size / 2)
   const deck = shuffle(faces.flatMap((face, pairId) => [{ face, pairId }, { face, pairId }]))
@@ -120,11 +175,13 @@ function buildBoard(size: number): void {
   board.append(...cards.map((card) => card.button))
 }
 
+/** Writes both scores to the page. */
 function updateScore(): void {
   scoreElements.blue.textContent = String(scores.blue)
   scoreElements.orange.textContent = String(scores.orange)
 }
 
+/** Shows whose turn it is. */
 function updateTurn(): void {
   turnIcon.dataset.color = currentPlayer
   turnIcon.src =
@@ -133,12 +190,20 @@ function updateTurn(): void {
       : `${BASE}assets/img/icons/chess_pawn_white.png`
 }
 
+/**
+ * Lets the computer remember a revealed card, with probability MEMORY_CHANCE.
+ * @param card - The revealed card.
+ */
 function rememberCard(card: Card): void {
   if (Math.random() < MEMORY_CHANCE) {
     seenCardIndexes.add(card.index)
   }
 }
 
+/**
+ * Turns a card over; after the second card the turn is resolved.
+ * @param card - The card to reveal.
+ */
 function revealCard(card: Card): void {
   card.button.classList.add('is-flipped')
   openCards.push(card)
@@ -149,6 +214,11 @@ function revealCard(card: Card): void {
   }
 }
 
+/**
+ * Locks a found pair and awards a point to the current player.
+ * @param firstCard - First card of the pair.
+ * @param secondCard - Second card of the pair.
+ */
 function markAsMatched(firstCard: Card, secondCard: Card): void {
   for (const card of [firstCard, secondCard]) {
     card.matched = true
@@ -159,6 +229,11 @@ function markAsMatched(firstCard: Card, secondCard: Card): void {
   updateScore()
 }
 
+/**
+ * Turns two non-matching cards back and passes the turn to the opponent.
+ * @param firstCard - First opened card.
+ * @param secondCard - Second opened card.
+ */
 function flipBack(firstCard: Card, secondCard: Card): void {
   firstCard.button.classList.remove('is-flipped')
   secondCard.button.classList.remove('is-flipped')
@@ -166,6 +241,7 @@ function flipBack(firstCard: Card, secondCard: Card): void {
   updateTurn()
 }
 
+/** Ends the game when all cards are matched, otherwise starts the computer's turn if it is up. */
 function startNextTurn(): void {
   if (cards.every((card) => card.matched)) {
     finishGame()
@@ -174,6 +250,7 @@ function startNextTurn(): void {
   }
 }
 
+/** Compares the two open cards and continues with the next turn. */
 function resolveTurn(): void {
   const [firstCard, secondCard] = openCards
   openCards = []
@@ -185,6 +262,10 @@ function resolveTurn(): void {
   startNextTurn()
 }
 
+/**
+ * Click handler: reveals the card if the human may play it.
+ * @param card - The clicked card.
+ */
 function onCardClick(card: Card): void {
   if (
     currentPlayer !== humanPlayer ||
@@ -197,6 +278,10 @@ function onCardClick(card: Card): void {
   revealCard(card)
 }
 
+/**
+ * Looks for a pair of which the computer remembers both cards.
+ * @returns The pair, or null if none is known.
+ */
 function findKnownPair(): [Card, Card] | null {
   const knownCards = cards.filter((card) => !card.matched && seenCardIndexes.has(card.index))
   for (const knownCard of knownCards) {
@@ -208,6 +293,7 @@ function findKnownPair(): [Card, Card] | null {
   return null
 }
 
+/** Chooses the computer's first card: a known pair, else an unseen card, else any card. */
 function pickFirstCard(): Card {
   const knownPair = findKnownPair()
   if (knownPair) return knownPair[0]
@@ -217,6 +303,10 @@ function pickFirstCard(): Card {
   return randomItem(unseenCards.length > 0 ? unseenCards : availableCards)
 }
 
+/**
+ * Chooses the computer's second card: the remembered partner, else an unseen card, else any card.
+ * @param firstCard - The card already revealed this turn.
+ */
 function pickSecondCard(firstCard: Card): Card {
   const partner = cards.find(
     (card) =>
@@ -232,12 +322,14 @@ function pickSecondCard(firstCard: Card): Card {
   return randomItem(unseenCards.length > 0 ? unseenCards : remainingCards)
 }
 
+/** Plays the computer's turn: reveals a first card, then a second one after a delay. */
 function computerTurn(): void {
   const firstCard = pickFirstCard()
   revealCard(firstCard)
   later(() => revealCard(pickSecondCard(firstCard)), COMPUTER_DELAY)
 }
 
+/** Saves the result and redirects to the result page. */
 function finishGame(): void {
   const winner: PlayerColor | null =
     scores.blue === scores.orange ? null : scores.blue > scores.orange ? 'blue' : 'orange'
@@ -249,6 +341,10 @@ function finishGame(): void {
   }, FINISH_DELAY)
 }
 
+/**
+ * Reads the saved settings and checks them.
+ * @returns The valid settings, or null if something is missing or the theme is unknown.
+ */
 function readValidSettings(): ValidSettings | null {
   const settings = loadSettings()
   if (!settings || !settings.theme || !settings.player || !settings.size) return null
@@ -256,18 +352,24 @@ function readValidSettings(): ValidSettings | null {
   return { theme: settings.theme, player: settings.player, size: settings.size }
 }
 
+/** Sets the theme-specific icons next to the scores. */
 function setPlayerIcons(): void {
   document.querySelectorAll<HTMLImageElement>('.game__player-icon').forEach((icon) => {
     icon.src = playerIcon(icon.dataset.color === 'orange' ? 'orange' : 'blue')
   })
 }
 
+/** Uses the longer button labels of the games theme in the quit dialog. */
 function setQuitLabels(): void {
   if (themeKey !== 'games') return
   keepPlayingButton.textContent = 'No, back to game'
   leaveGameButton.textContent = 'Yes, quit game'
 }
 
+/**
+ * Applies the settings to the page and builds the board.
+ * @param settings - The validated settings.
+ */
 function applySettings({ theme, player, size }: ValidSettings): void {
   document.body.dataset.theme = theme
   document.body.dataset.size = String(size)
@@ -280,6 +382,7 @@ function applySettings({ theme, player, size }: ValidSettings): void {
   buildBoard(size)
 }
 
+/** Entry point: starts the game, or redirects to the settings if they are invalid. */
 function initGame(): void {
   const settings = readValidSettings()
   if (!settings) {
