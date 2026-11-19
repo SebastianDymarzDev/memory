@@ -1,19 +1,25 @@
 import './styles/game.scss'
-import { loadSettings } from './storage'
+import { loadSettings, saveResult } from './storage'
 
 const BASE = import.meta.env.BASE_URL
 
-type Color = 'blue' | 'orange'
+type PlayerColor = 'blue' | 'orange'
+
+interface ValidSettings {
+  theme: string
+  player: string
+  size: number
+}
 
 interface Card {
   index: number
-  pair: number // gleiche Zahl = zusammengehörendes Paar
-  el: HTMLButtonElement
+  pairId: number
+  button: HTMLButtonElement
   matched: boolean
 }
 
 const numbered = (prefix: string): string[] =>
-  Array.from({ length: 18 }, (_, i) => `${prefix}${i + 1}.png`)
+  Array.from({ length: 18 }, (_, position) => `${prefix}${position + 1}.png`)
 
 const themes: Record<string, { folder: string; back: string; faces: string[] }> = {
   code: {
@@ -30,198 +36,263 @@ const themes: Record<string, { folder: string; back: string; faces: string[] }> 
   food: { folder: 'food', back: 'food-back.png', faces: numbered('food') },
 }
 
-const FLIP_BACK_DELAY = 900 // ms, so lange bleiben zwei Karten sichtbar
-const COMPUTER_DELAY = 800 // ms, Denkpause des Computers
-const MEMORY_CHANCE = 0.7 // Wahrscheinlichkeit, dass sich der Computer eine Karte merkt
+const FLIP_BACK_DELAY = 900
+const COMPUTER_DELAY = 800
+const MEMORY_CHANCE = 0.7
+const FINISH_DELAY = 1200
 
 const board = document.querySelector<HTMLElement>('#board')!
-const turnText = document.querySelector<HTMLElement>('#turn-text')!
 const turnIcon = document.querySelector<HTMLImageElement>('#turn-icon')!
-const scoreEls: Record<Color, HTMLElement> = {
+const scoreElements: Record<PlayerColor, HTMLElement> = {
   blue: document.querySelector<HTMLElement>('#score-blue')!,
   orange: document.querySelector<HTMLElement>('#score-orange')!,
 }
 const quitDialog = document.querySelector<HTMLDialogElement>('#quit-dialog')!
-
-document.querySelector('#exit-btn')!.addEventListener('click', () => quitDialog.showModal())
-document.querySelector('#quit-no')!.addEventListener('click', () => quitDialog.close())
+const keepPlayingButton = document.querySelector<HTMLElement>('#quit-no')!
+const leaveGameButton = document.querySelector<HTMLElement>('#quit-yes')!
 
 let cards: Card[] = []
-let open: Card[] = []
-let human: Color = 'blue'
-let computer: Color = 'orange'
-let current: Color = 'blue'
-const score: Record<Color, number> = { blue: 0, orange: 0 }
-const seen = new Set<number>() // Gedächtnis des Computers (Kartenindex)
+let openCards: Card[] = []
+let humanPlayer: PlayerColor = 'blue'
+let computerPlayer: PlayerColor = 'orange'
+let currentPlayer: PlayerColor = 'blue'
+const scores: Record<PlayerColor, number> = { blue: 0, orange: 0 }
+const seenCardIndexes = new Set<number>()
+const pendingActions: Array<() => void> = [] // Aktionen, die auf das Schließen des Dialogs warten
+let themeKey = 'code'
 
-function other(color: Color): Color {
+// Während der Exit-Dialog offen ist, werden alle Timer angehalten und danach nachgeholt
+function later(action: () => void, delayMs: number): void {
+  window.setTimeout(() => (quitDialog.open ? pendingActions.push(action) : action()), delayMs)
+}
+
+function playerIcon(color: PlayerColor): string {
+  return themeKey === 'code'
+    ? `${BASE}assets/img/code_vibes/player_code_${color}.png`
+    : `${BASE}assets/img/icons/chess_pawn_${color}.png`
+}
+
+function opponentOf(color: PlayerColor): PlayerColor {
   return color === 'blue' ? 'orange' : 'blue'
 }
 
-function randomOf<T>(list: T[]): T {
-  return list[Math.floor(Math.random() * list.length)]
+function randomItem<Item>(items: Item[]): Item {
+  return items[Math.floor(Math.random() * items.length)]
 }
 
-function shuffle<T>(list: T[]): T[] {
-  const copy = [...list]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+function shuffle<Item>(items: Item[]): Item[] {
+  const shuffled = [...items]
+  for (let position = shuffled.length - 1; position > 0; position--) {
+    const swapPosition = Math.floor(Math.random() * (position + 1))
+    ;[shuffled[position], shuffled[swapPosition]] = [shuffled[swapPosition], shuffled[position]]
   }
-  return copy
+  return shuffled
 }
 
-function buildBoard(themeKey: string, size: number): void {
+function cardMarkup(face: string): string {
   const theme = themes[themeKey]
-  const dir = `${BASE}assets/img/${theme.folder}/`
-  const faces = shuffle(theme.faces).slice(0, size / 2)
-  const deck = shuffle(faces.flatMap((face, pair) => [{ face, pair }, { face, pair }]))
+  const imageFolder = `${BASE}assets/img/${theme.folder}/`
+  return (
+    '<span class="card__inner">' +
+    `<img class="card__face" src="${imageFolder}${face}" alt="">` +
+    `<img class="card__back" src="${imageFolder}${theme.back}" alt="">` +
+    '</span>'
+  )
+}
 
-  // 16 Karten: 4 Spalten, 24 und 36 Karten: 6 Spalten
-  board.style.setProperty('--cols', String(size === 16 ? 4 : 6))
+function createCard(face: string, pairId: number, index: number): Card {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'card'
+  button.innerHTML = cardMarkup(face)
 
-  cards = deck.map(({ face, pair }, index) => {
-    const el = document.createElement('button')
-    el.type = 'button'
-    el.className = 'card'
-    el.innerHTML =
-      '<span class="card__inner">' +
-      `<img class="card__face" src="${dir}${face}" alt="">` +
-      `<img class="card__back" src="${dir}${theme.back}" alt="">` +
-      '</span>'
+  const card: Card = { index, pairId, button, matched: false }
+  button.addEventListener('click', () => onCardClick(card))
+  return card
+}
 
-    const card: Card = { index, pair, el, matched: false }
-    el.addEventListener('click', () => onCardClick(card))
-    board.append(el)
-    return card
-  })
+function buildBoard(size: number): void {
+  const faces = shuffle(themes[themeKey].faces).slice(0, size / 2)
+  const deck = shuffle(faces.flatMap((face, pairId) => [{ face, pairId }, { face, pairId }]))
+
+  board.style.setProperty('--columns', String(size === 16 ? 4 : 6))
+  cards = deck.map(({ face, pairId }, index) => createCard(face, pairId, index))
+  board.append(...cards.map((card) => card.button))
 }
 
 function updateScore(): void {
-  scoreEls.blue.textContent = String(score.blue)
-  scoreEls.orange.textContent = String(score.orange)
+  scoreElements.blue.textContent = String(scores.blue)
+  scoreElements.orange.textContent = String(scores.orange)
 }
 
 function updateTurn(): void {
-  turnIcon.src = `${BASE}assets/img/code_vibes/player_code_${current}.png`
+  turnIcon.dataset.color = currentPlayer
+  turnIcon.src =
+    themeKey === 'code'
+      ? playerIcon(currentPlayer)
+      : `${BASE}assets/img/icons/chess_pawn_white.png`
 }
 
-function remember(card: Card): void {
+function rememberCard(card: Card): void {
   if (Math.random() < MEMORY_CHANCE) {
-    seen.add(card.index)
+    seenCardIndexes.add(card.index)
   }
 }
 
-// Karte aufdecken; bei der zweiten Karte wird nach kurzer Pause ausgewertet
-function reveal(card: Card): void {
-  card.el.classList.add('is-flipped')
-  open.push(card)
-  remember(card)
+function revealCard(card: Card): void {
+  card.button.classList.add('is-flipped')
+  openCards.push(card)
+  rememberCard(card)
 
-  if (open.length === 2) {
-    window.setTimeout(resolve, FLIP_BACK_DELAY)
+  if (openCards.length === 2) {
+    later(resolveTurn, FLIP_BACK_DELAY)
   }
 }
 
-function resolve(): void {
-  const [a, b] = open
-  open = []
+function markAsMatched(firstCard: Card, secondCard: Card): void {
+  for (const card of [firstCard, secondCard]) {
+    card.matched = true
+    card.button.disabled = true
+    card.button.classList.add('is-matched')
+  }
+  scores[currentPlayer]++
+  updateScore()
+}
 
-  if (a.pair === b.pair) {
-    // Treffer: Punkt, der Spieler bleibt am Zug
-    for (const card of [a, b]) {
-      card.matched = true
-      card.el.disabled = true
-      card.el.classList.add('is-matched')
-    }
-    score[current]++
-    updateScore()
+function flipBack(firstCard: Card, secondCard: Card): void {
+  firstCard.button.classList.remove('is-flipped')
+  secondCard.button.classList.remove('is-flipped')
+  currentPlayer = opponentOf(currentPlayer)
+  updateTurn()
+}
 
-    if (cards.every((card) => card.matched)) {
-      finish()
-      return
-    }
+function startNextTurn(): void {
+  if (cards.every((card) => card.matched)) {
+    finishGame()
+  } else if (currentPlayer === computerPlayer) {
+    later(computerTurn, COMPUTER_DELAY)
+  }
+}
+
+function resolveTurn(): void {
+  const [firstCard, secondCard] = openCards
+  openCards = []
+  if (firstCard.pairId === secondCard.pairId) {
+    markAsMatched(firstCard, secondCard)
   } else {
-    a.el.classList.remove('is-flipped')
-    b.el.classList.remove('is-flipped')
-    current = other(current)
-    updateTurn()
+    flipBack(firstCard, secondCard)
   }
-
-  if (current === computer) {
-    window.setTimeout(computerTurn, COMPUTER_DELAY)
-  }
+  startNextTurn()
 }
 
 function onCardClick(card: Card): void {
-  if (current !== human || open.length === 2 || card.matched || open.includes(card)) return
-  reveal(card)
+  if (
+    currentPlayer !== humanPlayer ||
+    openCards.length === 2 ||
+    card.matched ||
+    openCards.includes(card)
+  ) {
+    return
+  }
+  revealCard(card)
 }
 
-// --- Computer ---
-
 function findKnownPair(): [Card, Card] | null {
-  const known = cards.filter((c) => !c.matched && seen.has(c.index))
-  for (const a of known) {
-    const b = known.find((c) => c !== a && c.pair === a.pair)
-    if (b) return [a, b]
+  const knownCards = cards.filter((card) => !card.matched && seenCardIndexes.has(card.index))
+  for (const knownCard of knownCards) {
+    const partner = knownCards.find(
+      (candidate) => candidate !== knownCard && candidate.pairId === knownCard.pairId,
+    )
+    if (partner) return [knownCard, partner]
   }
   return null
 }
 
-function pickFirst(): Card {
-  const pair = findKnownPair()
-  if (pair) return pair[0]
+function pickFirstCard(): Card {
+  const knownPair = findKnownPair()
+  if (knownPair) return knownPair[0]
 
-  const available = cards.filter((c) => !c.matched)
-  const unknown = available.filter((c) => !seen.has(c.index))
-  return randomOf(unknown.length > 0 ? unknown : available)
+  const availableCards = cards.filter((card) => !card.matched)
+  const unseenCards = availableCards.filter((card) => !seenCardIndexes.has(card.index))
+  return randomItem(unseenCards.length > 0 ? unseenCards : availableCards)
 }
 
-function pickSecond(first: Card): Card {
+function pickSecondCard(firstCard: Card): Card {
   const partner = cards.find(
-    (c) => c !== first && !c.matched && seen.has(c.index) && c.pair === first.pair,
+    (card) =>
+      card !== firstCard &&
+      !card.matched &&
+      seenCardIndexes.has(card.index) &&
+      card.pairId === firstCard.pairId,
   )
   if (partner) return partner
 
-  const rest = cards.filter((c) => c !== first && !c.matched)
-  const unknown = rest.filter((c) => !seen.has(c.index))
-  return randomOf(unknown.length > 0 ? unknown : rest)
+  const remainingCards = cards.filter((card) => card !== firstCard && !card.matched)
+  const unseenCards = remainingCards.filter((card) => !seenCardIndexes.has(card.index))
+  return randomItem(unseenCards.length > 0 ? unseenCards : remainingCards)
 }
 
 function computerTurn(): void {
-  const first = pickFirst()
-  reveal(first)
-  window.setTimeout(() => reveal(pickSecond(first)), COMPUTER_DELAY)
+  const firstCard = pickFirstCard()
+  revealCard(firstCard)
+  later(() => revealCard(pickSecondCard(firstCard)), COMPUTER_DELAY)
 }
 
-// --- Ende ---
+function finishGame(): void {
+  const winner: PlayerColor | null =
+    scores.blue === scores.orange ? null : scores.blue > scores.orange ? 'blue' : 'orange'
 
-function finish(): void {
-  const winner: Color | null =
-    score.blue === score.orange ? null : score.blue > score.orange ? 'blue' : 'orange'
+  saveResult({ winner, human: humanPlayer, blue: scores.blue, orange: scores.orange })
 
-  turnText.textContent = winner === null ? 'Draw' : winner === human ? 'You win!' : 'Computer wins!'
-  turnIcon.hidden = true
+  later(() => {
+    window.location.href = BASE + 'result.html'
+  }, FINISH_DELAY)
 }
 
-// --- Start ---
-
-function init(): void {
+function readValidSettings(): ValidSettings | null {
   const settings = loadSettings()
-  if (!settings || !settings.theme || !settings.player || !settings.size || !themes[settings.theme]) {
+  if (!settings || !settings.theme || !settings.player || !settings.size) return null
+  if (!themes[settings.theme]) return null
+  return { theme: settings.theme, player: settings.player, size: settings.size }
+}
+
+function setPlayerIcons(): void {
+  document.querySelectorAll<HTMLImageElement>('.game__player-icon').forEach((icon) => {
+    icon.src = playerIcon(icon.dataset.color === 'orange' ? 'orange' : 'blue')
+  })
+}
+
+function setQuitLabels(): void {
+  if (themeKey !== 'games') return
+  keepPlayingButton.textContent = 'No, back to game'
+  leaveGameButton.textContent = 'Yes, quit game'
+}
+
+function applySettings({ theme, player, size }: ValidSettings): void {
+  document.body.dataset.theme = theme
+  document.body.dataset.size = String(size)
+  themeKey = theme
+  humanPlayer = player === 'orange' ? 'orange' : 'blue'
+  computerPlayer = opponentOf(humanPlayer)
+  currentPlayer = humanPlayer
+  setPlayerIcons()
+  setQuitLabels()
+  buildBoard(size)
+}
+
+function initGame(): void {
+  const settings = readValidSettings()
+  if (!settings) {
     window.location.href = BASE + 'settings.html'
     return
   }
-
-  document.body.dataset.theme = settings.theme
-  human = settings.player === 'orange' ? 'orange' : 'blue'
-  computer = other(human)
-  current = human // du beginnst
-
-  buildBoard(settings.theme, settings.size)
+  applySettings(settings)
   updateScore()
   updateTurn()
 }
 
-init()
+document.querySelector('#exit-btn')!.addEventListener('click', () => quitDialog.showModal())
+keepPlayingButton.addEventListener('click', () => quitDialog.close())
+quitDialog.addEventListener('close', () => pendingActions.splice(0).forEach((action) => action()))
+
+initGame()

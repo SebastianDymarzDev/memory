@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/assets/img/icons/stadia_controller.png" />
+    <title>Memory</title>
+</head>
+<body>
+    <picture class="result__confetti" id="confetti" hidden>
+        <source media="(min-width: 1441px)" srcset="/assets/img/icons/Confetti%20_wide.png">
+        <img src="/assets/img/icons/Confetti.png" alt="">
+    </picture>
+
+    <main class="result">
+        <p class="result__sub" id="sub"></p>
+        <h1 class="result__title" id="title"></h1>
+
+        <div class="result__score" id="score" hidden>
+            <span class="result__player result__player--blue">
+                <img id="icon-blue" alt="">
+                <span class="result__player-name">Blue</span>
+                <span id="score-blue">0</span>
+            </span>
+            <span class="result__player result__player--orange">
+                <img id="icon-orange" alt="">
+                <span class="result__player-name">Orange</span>
+                <span id="score-orange">0</span>
+            </span>
+        </div>
+
+        <img class="result__art" id="art" alt="" hidden>
+        <a class="result__btn" id="btn" href="./settings.html">Home</a>
+    </main>
+
+    <script type="module" src="./src/result.ts"></script>
+</body>
+</html>

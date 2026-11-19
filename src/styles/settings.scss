@@ -9,7 +9,6 @@
     color: $bg;
     font-family: 'Figtree', sans-serif;
 
-    // Überschrift: außerhalb des Containers, mit dessen linker Kante bündig
     &__title {
         align-self: flex-start;
         position: relative;
@@ -42,7 +41,6 @@
         }
     }
 
-    // Container: Optionen links, Vorschau rechts
     &__inner {
         display: grid;
         grid-template-columns: 1fr 460px;
@@ -58,7 +56,6 @@
         gap: 43px;
     }
 
-    // Gruppen
     &__group {
         padding-left: 8px;
         margin-bottom: 46px;
@@ -82,7 +79,6 @@
         }
     }
 
-    // Radiobuttons
     &__option {
         display: flex;
         align-items: center;
@@ -117,7 +113,6 @@
             }
         }
 
-        // gewählte Option: fett, gelbe Linie mit Raute dahinter
         &:has(:checked) {
             font-weight: 700;
 
@@ -143,7 +138,6 @@
         }
     }
 
-    // rechte Seite
     &__preview {
         display: block;
         flex-shrink: 0;

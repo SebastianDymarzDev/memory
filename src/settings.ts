@@ -1,76 +1,73 @@
 import './styles/settings.scss'
 import { loadSettings, saveSettings } from './storage'
 
-// Basis-Pfad aus vite.config.ts ("/memory/")
 const BASE = import.meta.env.BASE_URL
 
-const previews: Record<string, string> = {
+const previewImages: Record<string, string> = {
   code: 'assets/img/code_vibes/code_example.png',
   games: 'assets/img/games/games_example.png',
   projects: 'assets/img/projects/projects_example.png',
   food: 'assets/img/food/food_example.png',
 }
 
-const steps = ['theme', 'player', 'size'] as const
+const settingNames = ['theme', 'player', 'size'] as const
 
-const preview = document.querySelector<HTMLImageElement>('#preview')!
-const startBtn = document.querySelector<HTMLButtonElement>('#start-btn')!
+const previewImage = document.querySelector<HTMLImageElement>('#preview')!
+const startButton = document.querySelector<HTMLButtonElement>('#start-btn')!
 
-// Alle Vorschaubilder vorab laden, damit beim Hover nichts flackert
-Object.values(previews).forEach((path) => {
-  new Image().src = BASE + path
-})
+function preload(): void {
+  Object.values(previewImages).forEach((imagePath) => {
+    new Image().src = BASE + imagePath
+  })
+}
 
-function getSelected(name: string): HTMLInputElement | null {
-  return document.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)
+function getSelected(settingName: string): HTMLInputElement | null {
+  return document.querySelector<HTMLInputElement>(`input[name="${settingName}"]:checked`)
 }
 
 function showPreview(theme: string | undefined): void {
   if (theme) {
-    preview.src = BASE + previews[theme]
+    previewImage.src = BASE + previewImages[theme]
   }
 }
 
-// Gespeicherte Auswahl wiederherstellen
 function restore(): void {
-  const saved = loadSettings()
-  if (!saved) return
+  const savedSettings = loadSettings()
+  if (!savedSettings) return
 
-  for (const name of steps) {
-    const value = saved[name]
+  for (const settingName of settingNames) {
+    const value = savedSettings[settingName]
     if (value === null) continue
-    const input = document.querySelector<HTMLInputElement>(`input[name="${name}"][value="${value}"]`)
-    if (input) input.checked = true
+    const radio = document.querySelector<HTMLInputElement>(
+      `input[name="${settingName}"][value="${value}"]`,
+    )
+    if (radio) radio.checked = true
   }
 }
 
 function save(): void {
-  const size = getSelected('size')
+  const selectedSize = getSelected('size')
   saveSettings({
     theme: getSelected('theme')?.value ?? null,
     player: getSelected('player')?.value ?? null,
-    size: size ? Number(size.value) : null,
+    size: selectedSize ? Number(selectedSize.value) : null,
   })
 }
 
 function update(): void {
-  // Vorschau passend zum gewählten Thema
   showPreview(getSelected('theme')?.value)
 
-  // Schritte in der Leiste markieren, sobald etwas gewählt ist
-  for (const name of steps) {
-    const step = document.querySelector<HTMLElement>(`[data-step="${name}"]`)
-    step?.classList.toggle('is-done', getSelected(name) !== null)
+  for (const settingName of settingNames) {
+    const stepElement = document.querySelector<HTMLElement>(`[data-step="${settingName}"]`)
+    stepElement?.classList.toggle('is-done', getSelected(settingName) !== null)
   }
 
-  // Start erst möglich, wenn alles gewählt ist
-  startBtn.disabled = !steps.every((name) => getSelected(name) !== null)
+  startButton.disabled = !settingNames.every((settingName) => getSelected(settingName) !== null)
 }
 
-// Hover: Vorschau des überfahrenen Themas zeigen, danach wieder das gewählte
-document.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => {
-  const label = input.closest('label')!
-  label.addEventListener('mouseenter', () => showPreview(input.value))
+document.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((radio) => {
+  const label = radio.closest('label')!
+  label.addEventListener('mouseenter', () => showPreview(radio.value))
   label.addEventListener('mouseleave', () => showPreview(getSelected('theme')?.value))
 })
 
@@ -79,10 +76,11 @@ document.addEventListener('change', () => {
   save()
 })
 
-startBtn.addEventListener('click', () => {
+startButton.addEventListener('click', () => {
   save()
   window.location.href = BASE + 'game.html'
 })
 
+preload()
 restore()
 update()
