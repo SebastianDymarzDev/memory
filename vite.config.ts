@@ -8,7 +8,6 @@ export default defineConfig({
         main: 'index.html',
         settings: 'settings.html',
         game: 'game.html',
-        result: 'result.html',
       },
     },
   },

@@ -1,6 +1,5 @@
-@use 'style' as *;
-
-body {
+/* All variables are set on .result, so they do not clash with the game page. */
+.result {
     --background: #2f3131;
     --font: 'Red Rose', sans-serif;
 
@@ -52,7 +51,7 @@ body {
     --draw-image-gap: 32px;
 }
 
-body[data-theme='games'] {
+body[data-theme='games'] .result {
     --background: #294f60;
     --font: 'Orbitron', sans-serif;
     --title-size: 64px;
@@ -99,7 +98,7 @@ body[data-theme='games'] {
     --draw-image-gap: 6px;
 }
 
-body[data-theme='projects'] {
+body[data-theme='projects'] .result {
     --background: #1f7594;
     --font: 'Figtree', sans-serif;
     --title-size: 64px;
@@ -141,7 +140,7 @@ body[data-theme='projects'] {
     --draw-image-gap: 12px;
 }
 
-body[data-theme='food'] {
+body[data-theme='food'] .result {
     --background: #f6f6f6;
     --font: 'Klee One', sans-serif;
     --title-size: 56px;
@@ -186,32 +185,37 @@ body[data-theme='food'] {
     --draw-image-gap: 22px;
 }
 
-body[data-theme='food'][data-state='lose'] {
+body[data-theme='food'] .result[data-state='lose'] {
     --background: #f5842c;
     --sub-color: #fff;
 }
 
-body[data-theme='food'][data-state='draw'] {
+body[data-theme='food'] .result[data-state='draw'] {
     --sub-color: #f28f43;
 }
 
-body[data-state='win'][data-winner='blue'] { --title-color: var(--title-color-blue); }
-body[data-state='win'][data-winner='orange'] { --title-color: var(--title-color-orange); }
-body[data-state='lose'] { --title-color: var(--title-color-lose); }
-body[data-state='draw'] { --title-color: var(--title-color-draw); }
-
-body {
-    background: var(--background);
-    font-family: var(--font);
-}
+.result[data-state='win'][data-winner='blue'] { --title-color: var(--title-color-blue); }
+.result[data-state='win'][data-winner='orange'] { --title-color: var(--title-color-orange); }
+.result[data-state='lose'] { --title-color: var(--title-color-lose); }
+.result[data-state='draw'] { --title-color: var(--title-color-draw); }
 
 .result {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
+    overflow-y: auto;
+    background: var(--background);
+    font-family: var(--font);
     text-align: center;
+    animation: result-drop 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+
+    &[hidden] {
+        display: none;
+    }
 
     &__confetti {
         position: absolute;
@@ -311,7 +315,7 @@ body {
     }
 }
 
-body[data-theme='code'][data-state='win'] .result {
+body[data-theme='code'] .result[data-state='win'] {
     padding-top: 190px;
 }
 
@@ -319,7 +323,7 @@ body[data-theme='code'][data-state='win'] .result {
     display: none;
 }
 
-body[data-state='lose'] {
+.result[data-state='lose'] {
     .result__title {
         order: -1;
         font-size: var(--lose-title-size);
@@ -337,7 +341,7 @@ body[data-state='lose'] {
     }
 }
 
-body[data-state='draw'] {
+.result[data-state='draw'] {
     .result__title {
         font-size: var(--draw-title-size);
         font-weight: var(--draw-title-weight);
@@ -354,15 +358,15 @@ body[data-state='draw'] {
     }
 }
 
-body[data-state='win'] .result__title {
+.result[data-state='win'] .result__title {
     text-transform: var(--title-transform-win);
 }
 
-body[data-state='lose'] .result__title {
+.result[data-state='lose'] .result__title {
     text-transform: var(--title-transform-lose);
 }
 
-body[data-state='draw'] .result__title {
+.result[data-state='draw'] .result__title {
     text-transform: uppercase;
 }
 
@@ -370,5 +374,21 @@ body[data-state='draw'] .result__title {
     .result__confetti {
         width: 95%;
         max-width: none;
+    }
+}
+
+body:has(.result:not([hidden])) {
+    overflow: hidden;
+}
+
+@keyframes result-drop {
+    from {
+        transform: translateY(-100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .result {
+        animation: none;
     }
 }

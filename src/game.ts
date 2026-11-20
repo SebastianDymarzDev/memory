@@ -1,6 +1,7 @@
 import './styles/game.scss';
-import { loadSettings, saveResult } from './storage';
-import { themes } from './themes';
+import { showResult } from './result';
+import { loadSettings } from './storage';
+import { isThemeKey, themes, type ThemeKey } from './themes';
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -8,9 +9,10 @@ type PlayerColor = 'blue' | 'orange';
 
 /** Settings after validation: every value is present and the theme exists. */
 interface ValidSettings {
-  theme: string;
+  theme: ThemeKey;
   player: string;
   size: number;
+  opponent: string;
 }
 
 interface Card {
@@ -26,8 +28,8 @@ interface Card {
 const FLIP_BACK_DELAY = 900;
 /** Time in ms the computer waits before each of its moves. */
 const COMPUTER_DELAY = 800;
-/** Probability (0 to 1) that the computer remembers a revealed card. */
-const MEMORY_CHANCE = 0.7;
+/** Probability (0 to 1) that the computer remembers a revealed card, per difficulty. */
+const MEMORY_CHANCES: Record<string, number> = { easy: 0.3, medium: 0.5, hard: 0.7 };
 /** Time in ms between the last pair and the redirect to the result page. */
 const FINISH_DELAY = 1200;
 
@@ -48,12 +50,16 @@ let openCards: Card[] = [];
 let humanPlayer: PlayerColor = 'blue';
 let computerPlayer: PlayerColor = 'orange';
 let currentPlayer: PlayerColor = 'blue';
+/** False when two humans play against each other. */
+let vsComputer = true;
+/** Chance that the computer remembers a revealed card (set by the difficulty). */
+let memoryChance = MEMORY_CHANCES.hard;
 const scores: Record<PlayerColor, number> = { blue: 0, orange: 0 };
 /** Indexes of cards the computer has seen and remembers. */
 const seenCardIndexes = new Set<number>();
 /** Actions that wait until the quit dialog is closed. */
 const pendingActions: Array<() => void> = [];
-let themeKey = 'code';
+let themeKey: ThemeKey = 'code';
 
 /**
  * Runs an action after a delay. While the quit dialog is open, the action
@@ -168,11 +174,11 @@ function updateTurn(): void {
 }
 
 /**
- * Lets the computer remember a revealed card, with probability MEMORY_CHANCE.
+ * Lets the computer remember a revealed card, with probability memoryChance.
  * @param card - The revealed card.
  */
 function rememberCard(card: Card): void {
-  if (Math.random() < MEMORY_CHANCE) {
+  if (Math.random() < memoryChance) {
     seenCardIndexes.add(card.index);
   }
 }
@@ -222,7 +228,7 @@ function flipBack(firstCard: Card, secondCard: Card): void {
 function startNextTurn(): void {
   if (cards.every((card) => card.matched)) {
     finishGame();
-  } else if (currentPlayer === computerPlayer) {
+  } else if (vsComputer && currentPlayer === computerPlayer) {
     runAfterDelay(computerTurn, COMPUTER_DELAY);
   }
 }
@@ -245,7 +251,7 @@ function resolveTurn(): void {
  */
 function onCardClick(card: Card): void {
   if (
-    currentPlayer !== humanPlayer ||
+    (vsComputer && currentPlayer !== humanPlayer) ||
     openCards.length === 2 ||
     card.matched ||
     openCards.includes(card)
@@ -310,16 +316,13 @@ function computerTurn(): void {
   runAfterDelay(() => revealCard(pickSecondCard(firstCard)), COMPUTER_DELAY);
 }
 
-/** Saves the result and redirects to the result page. */
+/** Shows the result screen after a short delay. */
 function finishGame(): void {
   const winner: PlayerColor | null =
     scores.blue === scores.orange ? null : scores.blue > scores.orange ? 'blue' : 'orange';
+  const result = { winner, human: humanPlayer, vsComputer, blue: scores.blue, orange: scores.orange };
 
-  saveResult({ winner, human: humanPlayer, blue: scores.blue, orange: scores.orange });
-
-  runAfterDelay(() => {
-    window.location.href = BASE + 'result.html';
-  }, FINISH_DELAY);
+  runAfterDelay(() => showResult(themeKey, result), FINISH_DELAY);
 }
 
 /**
@@ -328,9 +331,10 @@ function finishGame(): void {
  */
 function readValidSettings(): ValidSettings | null {
   const settings = loadSettings();
-  if (!settings || !settings.theme || !settings.player || !settings.size) return null;
-  if (!themes[settings.theme]) return null;
-  return { theme: settings.theme, player: settings.player, size: settings.size };
+  if (!settings || !settings.theme || !settings.player || !settings.size || !settings.opponent) return null;
+  if (!isThemeKey(settings.theme)) return null;
+  if (settings.opponent !== 'human' && !(settings.opponent in MEMORY_CHANCES)) return null;
+  return { theme: settings.theme, player: settings.player, size: settings.size, opponent: settings.opponent };
 }
 
 /** Sets the theme-specific icons next to the scores. */
@@ -351,13 +355,15 @@ function setQuitLabels(): void {
  * Applies the settings to the page and builds the board.
  * @param settings - The validated settings.
  */
-function applySettings({ theme, player, size }: ValidSettings): void {
+function applySettings({ theme, player, size, opponent }: ValidSettings): void {
   document.body.dataset.theme = theme;
   document.body.dataset.size = String(size);
   themeKey = theme;
   humanPlayer = player === 'orange' ? 'orange' : 'blue';
   computerPlayer = opponentOf(humanPlayer);
   currentPlayer = humanPlayer;
+  vsComputer = opponent !== 'human';
+  memoryChance = MEMORY_CHANCES[opponent] ?? memoryChance;
   setPlayerIcons();
   setQuitLabels();
   buildBoard(size);

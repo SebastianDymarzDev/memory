@@ -46,6 +46,32 @@
         </div>
     </dialog>
 
+    <section class="result" id="result" hidden>
+        <picture class="result__confetti" id="result-confetti" hidden>
+            <source media="(min-width: 1441px)" srcset="/assets/img/icons/Confetti%20_wide.png">
+            <img src="/assets/img/icons/Confetti.png" alt="">
+        </picture>
+
+        <p class="result__sub" id="result-sub"></p>
+        <h1 class="result__title" id="result-title"></h1>
+
+        <div class="result__score" id="result-score" hidden>
+            <span class="result__player result__player--blue">
+                <img id="result-icon-blue" alt="">
+                <span class="result__player-name">Blue</span>
+                <span id="result-score-blue">0</span>
+            </span>
+            <span class="result__player result__player--orange">
+                <img id="result-icon-orange" alt="">
+                <span class="result__player-name">Orange</span>
+                <span id="result-score-orange">0</span>
+            </span>
+        </div>
+
+        <img class="result__art" id="result-art" alt="" hidden>
+        <a class="result__btn" id="result-btn" href="./settings.html">Home</a>
+    </section>
+
     <template id="card-template">
         <button class="card" type="button">
             <span class="card__inner">

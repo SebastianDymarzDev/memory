@@ -3,18 +3,11 @@ export interface GameSettings {
   theme: string | null;
   player: string | null;
   size: number | null;
-}
-
-/** Outcome of a finished game. `winner` is null on a draw. */
-export interface GameResult {
-  winner: 'blue' | 'orange' | null;
-  human: 'blue' | 'orange';
-  blue: number;
-  orange: number;
+  /** 'human', 'easy', 'medium' or 'hard'. */
+  opponent: string | null;
 }
 
 const SETTINGS_KEY = 'memory-settings';
-const RESULT_KEY = 'memory-result';
 
 /**
  * Stores the settings in localStorage.
@@ -32,27 +25,6 @@ export function loadSettings(): GameSettings | null {
   try {
     const storedJson = localStorage.getItem(SETTINGS_KEY);
     return storedJson ? (JSON.parse(storedJson) as GameSettings) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Stores the game result in localStorage.
- * @param result - The result to save.
- */
-export function saveResult(result: GameResult): void {
-  localStorage.setItem(RESULT_KEY, JSON.stringify(result));
-}
-
-/**
- * Reads the game result from localStorage.
- * @returns The saved result, or null if none exists or it is unreadable.
- */
-export function loadResult(): GameResult | null {
-  try {
-    const storedJson = localStorage.getItem(RESULT_KEY);
-    return storedJson ? (JSON.parse(storedJson) as GameResult) : null;
   } catch {
     return null;
   }

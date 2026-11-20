@@ -15,41 +15,55 @@
 
         <div class="settings__inner">
             <div class="settings__options">
-                <div class="settings__group" role="radiogroup" aria-labelledby="g-theme">
-                    <h3 class="settings__heading" id="g-theme">
+                <fieldset class="settings__group">
+                    <legend class="settings__heading">
                         <img src="/assets/img/icons/palette.png" alt="">Game themes
-                    </h3>
-                    <label class="settings__option"><input type="radio" name="theme" value="code" checked><span>Code
+                    </legend>
+                    <label class="settings__option"><input type="radio" name="theme" value="code" data-short="Code vibes" checked><span>Code
                             vibes theme</span></label>
-                    <label class="settings__option"><input type="radio" name="theme" value="games"><span>Gaming
+                    <label class="settings__option"><input type="radio" name="theme" value="games" data-short="Gaming"><span>Gaming
                             theme</span></label>
-                    <label class="settings__option"><input type="radio" name="theme" value="projects"><span>DA Projects
+                    <label class="settings__option"><input type="radio" name="theme" value="projects" data-short="DA Projects"><span>DA Projects
                             theme</span></label>
-                    <label class="settings__option"><input type="radio" name="theme" value="food"><span>Foods
+                    <label class="settings__option"><input type="radio" name="theme" value="food" data-short="Foods"><span>Foods
                             theme</span></label>
-                </div>
+                </fieldset>
 
-                <div class="settings__group" role="radiogroup" aria-labelledby="g-player">
-                    <h3 class="settings__heading" id="g-player">
+                <fieldset class="settings__group">
+                    <legend class="settings__heading">
                         <img src="/assets/img/icons/chess_pawn_mint.png" alt="">Choose player
-                    </h3>
+                    </legend>
                     <label class="settings__option"><input type="radio" name="player"
                             value="blue"><span>Blue</span></label>
                     <label class="settings__option"><input type="radio" name="player"
                             value="orange"><span>Orange</span></label>
-                </div>
+                </fieldset>
 
-                <div class="settings__group" role="radiogroup" aria-labelledby="g-size">
-                    <h3 class="settings__heading" id="g-size">
+                <fieldset class="settings__group">
+                    <legend class="settings__heading">
                         <img src="/assets/img/icons/board_size.png" alt="">Board size
-                    </h3>
+                    </legend>
                     <label class="settings__option"><input type="radio" name="size" value="16"><span>16
                             cards</span></label>
                     <label class="settings__option"><input type="radio" name="size" value="24"><span>24
                             cards</span></label>
                     <label class="settings__option"><input type="radio" name="size" value="36"><span>36
                             cards</span></label>
-                </div>
+                </fieldset>
+
+                <fieldset class="settings__group">
+                    <legend class="settings__heading">
+                        <img src="/assets/img/icons/smart_toy.png" alt="">Opponent
+                    </legend>
+                    <label class="settings__option"><input type="radio" name="opponent" value="human" data-short="Human"><span>Human
+                            player</span></label>
+                    <label class="settings__option"><input type="radio" name="opponent" value="easy" data-short="Easy"><span>Computer
+                            (easy)</span></label>
+                    <label class="settings__option"><input type="radio" name="opponent" value="medium" data-short="Medium"><span>Computer
+                            (medium)</span></label>
+                    <label class="settings__option"><input type="radio" name="opponent" value="hard" data-short="Hard"><span>Computer
+                            (hard)</span></label>
+                </fieldset>
             </div>
 
             <div class="settings__side">
@@ -61,6 +75,8 @@
                     <span data-step="player">Player</span>
                     <img class="settings__sep" src="/assets/img/icons/Line%206.png" alt="">
                     <span data-step="size">Board size</span>
+                    <img class="settings__sep" src="/assets/img/icons/Line%206.png" alt="">
+                    <span data-step="opponent">Opponent</span>
                     <button class="settings__start" id="start-btn" type="button" disabled>
                         <img src="/assets/img/icons/smart_display.png" alt=""><span>Start</span>
                     </button>

@@ -1,11 +1,18 @@
-import './styles/result.scss';
-import { loadResult, loadSettings, type GameResult } from './storage';
+import type { ThemeKey } from './themes';
 
 type PlayerColor = 'blue' | 'orange';
-/** Outcome from the point of view of the human player. */
+/** Outcome of the game. Against the computer it is seen from the human player. */
 type State = 'win' | 'lose' | 'draw';
-/** Key of a theme that has result images. */
-type ThemeKey = keyof typeof resultImages;
+
+/** Outcome of a finished game. `winner` is null on a draw. */
+export interface GameResult {
+  winner: PlayerColor | null;
+  human: PlayerColor;
+  /** False when two humans played against each other. */
+  vsComputer: boolean;
+  blue: number;
+  orange: number;
+}
 
 const BASE = import.meta.env.BASE_URL;
 const IMAGE_FOLDER = `${BASE}assets/img/`;
@@ -16,15 +23,18 @@ const resultImages = {
   games: { win: () => 'games/win.png', draw: 'games/draw_games.png' },
   projects: { win: (color: PlayerColor) => `projects/win_${color}_projects.png`, draw: 'projects/draw_projects.png' },
   food: { win: (color: PlayerColor) => `food/win_${color}_food.png`, draw: 'food/draw_food.png' },
-} as const;
+} as const satisfies Record<ThemeKey, unknown>;
+
+/** The result screen that slides in over the board. */
+const resultElement = document.querySelector<HTMLElement>('#result')!;
 
 /**
- * Finds an element by its id.
- * @param id - The element id without `#`.
+ * Finds an element inside the result screen.
+ * @param name - The element id without the prefix `result-`.
  * @returns The element (assumed to exist).
  */
-const getElement = <ElementType extends HTMLElement>(id: string) =>
-  document.querySelector<ElementType>(`#${id}`)!;
+const getElement = <ElementType extends HTMLElement>(name: string) =>
+  document.querySelector<ElementType>(`#result-${name}`)!;
 
 /**
  * Builds the path of a player icon.
@@ -39,12 +49,14 @@ function playerIcon(theme: ThemeKey, color: PlayerColor): string {
 }
 
 /**
- * Derives win, lose or draw for the human player.
+ * Derives win, lose or draw. Against the computer it is seen from the human player,
+ * between two humans there is no loser screen.
  * @param result - The finished game.
- * @returns The state for the human player.
+ * @returns The state to show.
  */
 function getState(result: GameResult): State {
   if (result.winner === null) return 'draw';
+  if (!result.vsComputer) return 'win';
   return result.winner === result.human ? 'win' : 'lose';
 }
 
@@ -74,7 +86,7 @@ function showImage(path: string): void {
  * @param winner - Colour of the winning player.
  */
 function showWin(theme: ThemeKey, winner: PlayerColor): void {
-  document.body.dataset.winner = winner;
+  resultElement.dataset.winner = winner;
   setTexts('The winner is', winner === 'blue' ? 'Blue Player' : 'Orange Player');
   showImage(resultImages[theme].win(winner));
   getElement('confetti').hidden = theme !== 'code';
@@ -104,29 +116,17 @@ function showLose(theme: ThemeKey, result: GameResult): void {
 }
 
 /**
- * Sets theme and state on the body and renders the matching screen.
+ * Fills the matching result screen and lets it slide in over the board.
  * @param theme - Current theme.
  * @param result - The finished game.
  */
-function showResult(theme: ThemeKey, result: GameResult): void {
+export function showResult(theme: ThemeKey, result: GameResult): void {
   const state = getState(result);
-  document.body.dataset.theme = theme;
-  document.body.dataset.state = state;
+  resultElement.dataset.state = state;
   getElement('btn').textContent = theme === 'code' ? 'Back to start' : 'Home';
   if (state === 'win') showWin(theme, result.winner as PlayerColor);
   else if (state === 'draw') showDraw(theme);
   else showLose(theme, result);
+  resultElement.hidden = false;
+  getElement('btn').focus();
 }
-
-/** Entry point: shows the result, or redirects to the settings if theme or result is missing. */
-function initResult(): void {
-  const theme = loadSettings()?.theme as ThemeKey | undefined;
-  const result = loadResult();
-  if (!theme || !(theme in resultImages) || !result) {
-    window.location.href = BASE + 'settings.html';
-    return;
-  }
-  showResult(theme, result);
-}
-
-initResult();
