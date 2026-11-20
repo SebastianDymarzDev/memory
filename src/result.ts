@@ -1,16 +1,13 @@
 import './styles/result.scss';
 import { loadResult, loadSettings, type GameResult } from './storage';
 
-/** Colour of a player. */
 type PlayerColor = 'blue' | 'orange';
 /** Outcome from the point of view of the human player. */
 type State = 'win' | 'lose' | 'draw';
 /** Key of a theme that has result images. */
 type ThemeKey = keyof typeof resultImages;
 
-/** Base URL of the app (Vite `base`). */
 const BASE = import.meta.env.BASE_URL;
-/** Root folder of all images. */
 const IMAGE_FOLDER = `${BASE}assets/img/`;
 
 /** Result images per theme, relative to IMAGE_FOLDER. */
@@ -44,6 +41,7 @@ function playerIcon(theme: ThemeKey, color: PlayerColor): string {
 /**
  * Derives win, lose or draw for the human player.
  * @param result - The finished game.
+ * @returns The state for the human player.
  */
 function getState(result: GameResult): State {
   if (result.winner === null) return 'draw';

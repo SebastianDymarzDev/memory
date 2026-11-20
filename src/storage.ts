@@ -13,9 +13,7 @@ export interface GameResult {
   orange: number;
 }
 
-/** localStorage key for the settings. */
 const SETTINGS_KEY = 'memory-settings';
-/** localStorage key for the game result. */
 const RESULT_KEY = 'memory-result';
 
 /**

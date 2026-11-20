@@ -1,10 +1,9 @@
 import './styles/game.scss';
 import { loadSettings, saveResult } from './storage';
+import { themes } from './themes';
 
-/** Base URL of the app (Vite `base`). */
 const BASE = import.meta.env.BASE_URL;
 
-/** Colour of a player. */
 type PlayerColor = 'blue' | 'orange';
 
 /** Settings after validation: every value is present and the theme exists. */
@@ -14,7 +13,6 @@ interface ValidSettings {
   size: number;
 }
 
-/** A single card on the board. */
 interface Card {
   /** Position in the shuffled deck. */
   index: number;
@@ -23,29 +21,6 @@ interface Card {
   button: HTMLButtonElement;
   matched: boolean;
 }
-
-/**
- * Builds the file names `<prefix>1.png` to `<prefix>18.png`.
- * @param prefix - File name prefix, e.g. "games".
- */
-const numbered = (prefix: string): string[] =>
-  Array.from({ length: 18 }, (_, position) => `${prefix}${position + 1}.png`);
-
-/** Image folder, card back and card faces per theme. */
-const themes: Record<string, { folder: string; back: string; faces: string[] }> = {
-  code: {
-    folder: 'code_vibes',
-    back: 'code_back.png',
-    faces: [
-      'angular', 'bootstrap', 'database', 'django', 'firebase', 'git',
-      'github', 'html3', 'html5', 'javascript', 'node', 'python',
-      'react', 'sass', 'terminal', 'typescript', 'vscode', 'vuejs',
-    ].map((name) => `${name}.png`),
-  },
-  games: { folder: 'games', back: 'games-back.png', faces: numbered('games') },
-  projects: { folder: 'projects', back: 'projects-back.png', faces: numbered('projects') },
-  food: { folder: 'food', back: 'food-back.png', faces: numbered('food') },
-};
 
 /** Time in ms until two opened cards are resolved. */
 const FLIP_BACK_DELAY = 900;
@@ -56,7 +31,8 @@ const MEMORY_CHANCE = 0.7;
 /** Time in ms between the last pair and the redirect to the result page. */
 const FINISH_DELAY = 1200;
 
-const board = document.querySelector<HTMLElement>('#board')!;
+const boardElement = document.querySelector<HTMLElement>('#board')!;
+const cardTemplate = document.querySelector<HTMLTemplateElement>('#card-template')!;
 const turnIcon = document.querySelector<HTMLImageElement>('#turn-icon')!;
 const scoreElements: Record<PlayerColor, HTMLElement> = {
   blue: document.querySelector<HTMLElement>('#score-blue')!,
@@ -66,7 +42,6 @@ const quitDialog = document.querySelector<HTMLDialogElement>('#quit-dialog')!;
 const keepPlayingButton = document.querySelector<HTMLElement>('#quit-no')!;
 const leaveGameButton = document.querySelector<HTMLElement>('#quit-yes')!;
 
-/** All cards of the current game. */
 let cards: Card[] = [];
 /** Cards currently turned over in this turn (0 to 2). */
 let openCards: Card[] = [];
@@ -86,13 +61,14 @@ let themeKey = 'code';
  * @param action - The function to run.
  * @param delayMs - Delay in milliseconds.
  */
-function later(action: () => void, delayMs: number): void {
+function runAfterDelay(action: () => void, delayMs: number): void {
   window.setTimeout(() => (quitDialog.open ? pendingActions.push(action) : action()), delayMs);
 }
 
 /**
  * Builds the icon path of a player for the current theme.
  * @param color - Player colour.
+ * @returns The image URL.
  */
 function playerIcon(color: PlayerColor): string {
   return themeKey === 'code'
@@ -103,12 +79,17 @@ function playerIcon(color: PlayerColor): string {
 /**
  * Returns the other player.
  * @param color - Player colour.
+ * @returns The opposite colour.
  */
 function opponentOf(color: PlayerColor): PlayerColor {
   return color === 'blue' ? 'orange' : 'blue';
 }
 
-/** Picks a random element of a non-empty list. */
+/**
+ * Picks a random element of a non-empty list.
+ * @param items - Non-empty list.
+ * @returns A randomly chosen element.
+ */
 function randomItem<Item>(items: Item[]): Item {
   return items[Math.floor(Math.random() * items.length)];
 }
@@ -128,18 +109,15 @@ function shuffle<Item>(items: Item[]): Item[] {
 }
 
 /**
- * Builds the inner HTML of a card (face and back image).
+ * Sets the face and back image of a card button.
+ * @param button - Card button cloned from the template.
  * @param face - File name of the face image.
  */
-function cardMarkup(face: string): string {
+function setCardImages(button: HTMLButtonElement, face: string): void {
   const theme = themes[themeKey];
   const imageFolder = `${BASE}assets/img/${theme.folder}/`;
-  return (
-    '<span class="card__inner">' +
-    `<img class="card__face" src="${imageFolder}${face}" alt="">` +
-    `<img class="card__back" src="${imageFolder}${theme.back}" alt="">` +
-    '</span>'
-  );
+  button.querySelector<HTMLImageElement>('.card__face')!.src = imageFolder + face;
+  button.querySelector<HTMLImageElement>('.card__back')!.src = imageFolder + theme.back;
 }
 
 /**
@@ -147,12 +125,11 @@ function cardMarkup(face: string): string {
  * @param face - File name of the face image.
  * @param pairId - Identifier shared by both cards of a pair.
  * @param index - Position in the deck.
+ * @returns The new card.
  */
 function createCard(face: string, pairId: number, index: number): Card {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'card';
-  button.innerHTML = cardMarkup(face);
+  const button = cardTemplate.content.firstElementChild!.cloneNode(true) as HTMLButtonElement;
+  setCardImages(button, face);
 
   const card: Card = { index, pairId, button, matched: false };
   button.addEventListener('click', () => onCardClick(card));
@@ -161,15 +138,18 @@ function createCard(face: string, pairId: number, index: number): Card {
 
 /**
  * Creates the shuffled deck and adds it to the board.
- * @param size - Number of cards (16, 24 or 36).
+ * @param size - Total number of cards, which also sets the layout:
+ *   16 = 4 columns x 4 rows (8 pairs),
+ *   24 = 6 columns x 4 rows (12 pairs),
+ *   36 = 6 columns x 6 rows (18 pairs).
  */
 function buildBoard(size: number): void {
   const faces = shuffle(themes[themeKey].faces).slice(0, size / 2);
   const deck = shuffle(faces.flatMap((face, pairId) => [{ face, pairId }, { face, pairId }]));
 
-  board.style.setProperty('--columns', String(size === 16 ? 4 : 6));
+  boardElement.style.setProperty('--columns', String(size === 16 ? 4 : 6));
   cards = deck.map(({ face, pairId }, index) => createCard(face, pairId, index));
-  board.append(...cards.map((card) => card.button));
+  boardElement.append(...cards.map((card) => card.button));
 }
 
 /** Writes both scores to the page. */
@@ -207,7 +187,7 @@ function revealCard(card: Card): void {
   rememberCard(card);
 
   if (openCards.length === 2) {
-    later(resolveTurn, FLIP_BACK_DELAY);
+    runAfterDelay(resolveTurn, FLIP_BACK_DELAY);
   }
 }
 
@@ -243,7 +223,7 @@ function startNextTurn(): void {
   if (cards.every((card) => card.matched)) {
     finishGame();
   } else if (currentPlayer === computerPlayer) {
-    later(computerTurn, COMPUTER_DELAY);
+    runAfterDelay(computerTurn, COMPUTER_DELAY);
   }
 }
 
@@ -290,7 +270,10 @@ function findKnownPair(): [Card, Card] | null {
   return null;
 }
 
-/** Chooses the computer's first card: a known pair, else an unseen card, else any card. */
+/**
+ * Chooses the computer's first card: a known pair, else an unseen card, else any card.
+ * @returns The card to reveal first.
+ */
 function pickFirstCard(): Card {
   const knownPair = findKnownPair();
   if (knownPair) return knownPair[0];
@@ -303,6 +286,7 @@ function pickFirstCard(): Card {
 /**
  * Chooses the computer's second card: the remembered partner, else an unseen card, else any card.
  * @param firstCard - The card already revealed this turn.
+ * @returns The card to reveal second.
  */
 function pickSecondCard(firstCard: Card): Card {
   const partner = cards.find(
@@ -323,7 +307,7 @@ function pickSecondCard(firstCard: Card): Card {
 function computerTurn(): void {
   const firstCard = pickFirstCard();
   revealCard(firstCard);
-  later(() => revealCard(pickSecondCard(firstCard)), COMPUTER_DELAY);
+  runAfterDelay(() => revealCard(pickSecondCard(firstCard)), COMPUTER_DELAY);
 }
 
 /** Saves the result and redirects to the result page. */
@@ -333,7 +317,7 @@ function finishGame(): void {
 
   saveResult({ winner, human: humanPlayer, blue: scores.blue, orange: scores.orange });
 
-  later(() => {
+  runAfterDelay(() => {
     window.location.href = BASE + 'result.html';
   }, FINISH_DELAY);
 }

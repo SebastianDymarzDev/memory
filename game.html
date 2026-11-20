@@ -13,12 +13,14 @@
     <header class="game__bar">
         <div class="game__score">
             <span class="game__player game__player--blue">
-                <img class="game__player-icon" data-color="blue" src="/assets/img/code_vibes/player_code_blue.png" alt="">
+                <img class="game__player-icon" data-color="blue" src="/assets/img/code_vibes/player_code_blue.png"
+                    alt="">
                 <span class="game__player-name">Blue</span>
                 <span id="score-blue">0</span>
             </span>
             <span class="game__player game__player--orange">
-                <img class="game__player-icon" data-color="orange" src="/assets/img/code_vibes/player_code_orange.png" alt="">
+                <img class="game__player-icon" data-color="orange" src="/assets/img/code_vibes/player_code_orange.png"
+                    alt="">
                 <span class="game__player-name">Orange</span>
                 <span id="score-orange">0</span>
             </span>
@@ -44,5 +46,16 @@
         </div>
     </dialog>
 
+    <template id="card-template">
+        <button class="card" type="button">
+            <span class="card__inner">
+                <img class="card__face" alt="">
+                <img class="card__back" alt="">
+            </span>
+        </button>
+    </template>
+
     <script type="module" src="./src/game.ts"></script>
 </body>
+
+</html>

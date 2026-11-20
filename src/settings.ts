@@ -1,10 +1,8 @@
 import './styles/settings.scss';
 import { loadSettings, saveSettings } from './storage';
 
-/** Base URL of the app (Vite `base`). */
 const BASE = import.meta.env.BASE_URL;
 
-/** Preview image path per theme. */
 const previewImages: Record<string, string> = {
   code: 'assets/img/code_vibes/code_example.png',
   games: 'assets/img/games/games_example.png',
